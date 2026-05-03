@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ShiftFlow — Планирование рабочих смен</title>
+  <meta name="description" content="Система планирования и визуального отображения рабочих смен персонала" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- Sidebar: staff directory -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">
+          <span class="logo-icon">⚡</span>
+          <span class="logo-text">ShiftFlow</span>
+        </div>
+        <button id="btn-toggle-sidebar" class="icon-btn" title="Свернуть панель">‹</button>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="section-label">Персонал</div>
+        <div id="staff-list" class="staff-list">
+          <!-- rendered by staffView.js -->
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="sidebar-section">
+          <div class="section-label">Фильтры</div>
+          <div id="filters-panel" class="filters-panel">
+            <select id="filter-employee" class="filter-select">
+              <option value="">Все сотрудники</option>
+            </select>
+            <select id="filter-type" class="filter-select">
+              <option value="">Все типы смен</option>
+              <option value="day">🌤 Дневная</option>
+              <option value="evening">🌆 Вечерняя</option>
+              <option value="night">🌙 Ночная</option>
+            </select>
+            <button id="btn-clear-filters" class="btn-ghost btn-sm">Сбросить</button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main content: calendar -->
+    <main id="main-content">
+      <header id="top-bar">
+        <div class="topbar-left">
+          <button id="btn-prev" class="icon-btn nav-btn" title="Назад">‹</button>
+          <h1 id="period-label" class="period-label">Загрузка...</h1>
+          <button id="btn-next" class="icon-btn nav-btn" title="Вперёд">›</button>
+          <button id="btn-today" class="btn-ghost btn-sm">Сегодня</button>
+        </div>
+        <div class="topbar-right">
+          <div class="view-toggle" role="group">
+            <button id="btn-view-week" class="view-btn active" data-view="week">Неделя</button>
+            <button id="btn-view-month" class="view-btn" data-view="month">Месяц</button>
+          </div>
+          <button id="btn-add-shift" class="btn-primary">
+            <span>+</span> Добавить смену
+          </button>
+        </div>
+      </header>
+
+      <section id="calendar-section">
+        <!-- rendered by calendarView.js -->
+      </section>
+    </main>
+
+  </div>
+
+  <!-- Modal overlay -->
+  <div id="modal-overlay" class="modal-overlay hidden" role="dialog" aria-modal="true">
+    <div id="modal-box" class="modal-box">
+      <!-- rendered by modalView.js -->
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
