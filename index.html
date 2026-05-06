@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 </head>
+
 <body>
   <div id="app">
 
@@ -22,7 +24,10 @@
       </div>
 
       <div class="sidebar-section">
-        <div class="section-label">Персонал</div>
+        <div class="sidebar-staff-header">
+          <div class="section-label" style="padding-bottom:0">Персонал</div>
+          <button id="btn-add-employee" class="btn-add-emp icon-btn" title="Добавить сотрудника">+</button>
+        </div>
         <div id="staff-list" class="staff-list">
           <!-- rendered by staffView.js -->
         </div>
@@ -86,4 +91,5 @@
 
   <script type="module" src="/src/main.js"></script>
 </body>
+
 </html>

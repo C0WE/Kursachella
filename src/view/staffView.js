@@ -18,8 +18,9 @@ export const staffView = {
    * @param {HTMLElement} container
    * @param {Array} employees
    * @param {number|null} activeEmployeeId — активный фильтр
+   * @param {Function} onEdit — callback при клике на карандаш
    */
-  render(container, employees, activeEmployeeId = null) {
+  render(container, employees, activeEmployeeId = null, onEdit = null) {
     container.innerHTML = employees.map(emp => `
       <div class="staff-card${activeEmployeeId === emp.id ? ' active' : ''}"
            data-employee-id="${emp.id}"
@@ -30,6 +31,7 @@ export const staffView = {
           <div class="staff-meta">${emp.position}</div>
         </div>
         <div class="staff-status status-${emp.status}" title="${STATUS_LABEL[emp.status]}"></div>
+        ${onEdit ? `<button class="staff-edit-btn icon-btn" data-edit-id="${emp.id}" title="Редактировать">✎</button>` : ''}
       </div>`
     ).join('');
   },
@@ -38,7 +40,6 @@ export const staffView = {
    * Заполняет <select> сотрудниками для фильтра.
    */
   populateFilterSelect(selectEl, employees) {
-    const existing = selectEl.innerHTML.split('</option>')[0] + '</option>';
     selectEl.innerHTML = `<option value="">Все сотрудники</option>` +
       employees.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
   },

@@ -8,9 +8,21 @@ function initials(name) {
 }
 
 const TYPE_OPTIONS = [
-  { value: 'day',     icon: '🌤', label: 'Дневная' },
+  { value: 'day', icon: '🌤', label: 'Дневная' },
   { value: 'evening', icon: '🌆', label: 'Вечерняя' },
-  { value: 'night',   icon: '🌙', label: 'Ночная' },
+  { value: 'night', icon: '🌙', label: 'Ночная' },
+];
+
+const PALETTE = [
+  '#6366f1', '#3b82f6', '#06b6d4', '#10b981', '#84cc16',
+  '#f59e0b', '#f97316', '#ec4899', '#8b5cf6', '#ef4444',
+  '#14b8a6', '#a855f7',
+];
+
+const STATUS_OPTIONS = [
+  { value: 'active', label: 'Работает', cls: 'status-active' },
+  { value: 'vacation', label: 'Отпуск', cls: 'status-vacation' },
+  { value: 'sick', label: 'Больничный', cls: 'status-sick' },
 ];
 
 function typeSelector(selected = 'day') {
@@ -42,7 +54,7 @@ export const modalView = {
 
   init() {
     this.overlay = document.getElementById('modal-overlay');
-    this.box     = document.getElementById('modal-box');
+    this.box = document.getElementById('modal-box');
     this.overlay.addEventListener('click', e => {
       if (e.target === this.overlay) this.close();
     });
@@ -173,31 +185,146 @@ export const modalView = {
     this.overlay.classList.add('hidden');
   },
 
-  _open() {
+  _open(focusSelector = '#shift-title') {
     this.overlay.classList.remove('hidden');
-    setTimeout(() => document.getElementById('shift-title')?.focus(), 50);
+    setTimeout(() => document.querySelector(focusSelector)?.focus(), 50);
   },
 
   _bindClose() {
-    document.getElementById('modal-close-btn')?.addEventListener('click',  () => this.close());
+    document.getElementById('modal-close-btn')?.addEventListener('click', () => this.close());
     document.getElementById('modal-cancel-btn')?.addEventListener('click', () => this.close());
   },
 
   _collectFormData() {
-    const title     = document.getElementById('shift-title').value.trim();
-    const date      = document.getElementById('shift-date').value;
+    const title = document.getElementById('shift-title').value.trim();
+    const date = document.getElementById('shift-date').value;
     const startTime = document.getElementById('shift-start').value;
-    const endTime   = document.getElementById('shift-end').value;
-    const notes     = document.getElementById('shift-notes').value.trim();
-    const type      = document.querySelector('input[name="shift-type"]:checked')?.value || 'day';
+    const endTime = document.getElementById('shift-end').value;
+    const notes = document.getElementById('shift-notes').value.trim();
+    const type = document.querySelector('input[name="shift-type"]:checked')?.value || 'day';
     const employeeIds = [...document.querySelectorAll('input[name="employees"]:checked')]
       .map(el => Number(el.value));
 
     if (!title) { alert('Введите название смены'); return null; }
-    if (!date)  { alert('Выберите дату'); return null; }
+    if (!date) { alert('Выберите дату'); return null; }
     if (!startTime || !endTime) { alert('Укажите время смены'); return null; }
     if (employeeIds.length === 0) { alert('Назначьте хотя бы одного сотрудника'); return null; }
 
     return { title, date, startTime, endTime, type, employeeIds, notes };
+  },
+
+  // ── Форма сотрудника ──────────────────────────────────────
+  _employeeFormBody(emp = null) {
+    const name = emp?.name || '';
+    const position = emp?.position || '';
+    const status = emp?.status || 'active';
+    const color = emp?.color || PALETTE[0];
+
+    const colorSwatches = PALETTE.map(c => `
+      <label class="color-swatch${c === color ? ' selected' : ''}" style="background:${c}" title="${c}">
+        <input type="radio" name="emp-color" value="${c}" ${c === color ? 'checked' : ''} style="display:none">
+        ${c === color ? '<span class="swatch-check">✓</span>' : ''}
+      </label>`).join('');
+
+    const statusOpts = STATUS_OPTIONS.map(s => `
+      <label class="emp-status-option">
+        <input type="radio" name="emp-status" value="${s.value}" ${s.value === status ? 'checked' : ''}>
+        <span class="status-dot ${s.cls}"></span>
+        <span>${s.label}</span>
+      </label>`).join('');
+
+    return `
+      <div class="form-group">
+        <label class="form-label" for="emp-name">Имя и фамилия</label>
+        <input id="emp-name" class="form-input" type="text" value="${name}" placeholder="Например: Иван Петров" maxlength="60">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="emp-position">Должность</label>
+        <input id="emp-position" class="form-input" type="text" value="${position}" placeholder="Например: Менеджер" maxlength="40">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Цвет аватара</label>
+        <div class="color-palette">${colorSwatches}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Статус</label>
+        <div class="emp-status-selector">${statusOpts}</div>
+      </div>`;
+  },
+
+  _collectEmployeeData() {
+    const name = document.getElementById('emp-name').value.trim();
+    const position = document.getElementById('emp-position').value.trim();
+    const color = document.querySelector('input[name="emp-color"]:checked')?.value || PALETTE[0];
+    const status = document.querySelector('input[name="emp-status"]:checked')?.value || 'active';
+
+    if (!name) { alert('Введите имя сотрудника'); return null; }
+    if (!position) { alert('Укажите должность'); return null; }
+    return { name, position, color, status };
+  },
+
+  showCreateEmployee(onSave) {
+    this.box.innerHTML = `
+      <div class="modal-header">
+        <h2 class="modal-title">Новый сотрудник</h2>
+        <button class="modal-close" id="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">${this._employeeFormBody()}</div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="modal-cancel-btn">Отмена</button>
+        <button class="btn-primary" id="modal-save-btn">Добавить сотрудника</button>
+      </div>`;
+    this._bindClose();
+    this._bindColorSwatches();
+    document.getElementById('modal-save-btn').addEventListener('click', () => {
+      const data = this._collectEmployeeData();
+      if (data) { onSave(data); this.close(); }
+    });
+    this._open('#emp-name');
+  },
+
+  showEditEmployee(emp, onSave, onDelete) {
+    this.box.innerHTML = `
+      <div class="modal-header">
+        <h2 class="modal-title">Редактировать сотрудника</h2>
+        <button class="modal-close" id="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">${this._employeeFormBody(emp)}</div>
+      <div class="modal-footer">
+        <div class="modal-footer-left">
+          <button class="btn-danger" id="modal-delete-btn">🗑 Удалить</button>
+        </div>
+        <button class="btn-ghost" id="modal-cancel-btn">Отмена</button>
+        <button class="btn-primary" id="modal-save-btn">Сохранить</button>
+      </div>`;
+    this._bindClose();
+    this._bindColorSwatches();
+    document.getElementById('modal-save-btn').addEventListener('click', () => {
+      const data = this._collectEmployeeData();
+      if (data) { onSave({ ...data, id: emp.id }); this.close(); }
+    });
+    document.getElementById('modal-delete-btn').addEventListener('click', () => {
+      if (confirm(`Удалить сотрудника "${emp.name}"? Смены с этим сотрудником останутся.`)) {
+        onDelete(emp.id);
+        this.close();
+      }
+    });
+    this._open('#emp-name');
+  },
+
+  _bindColorSwatches() {
+    this.box.querySelectorAll('.color-swatch').forEach(label => {
+      label.addEventListener('click', () => {
+        this.box.querySelectorAll('.color-swatch').forEach(l => {
+          l.classList.remove('selected');
+          l.querySelector('.swatch-check')?.remove();
+        });
+        label.classList.add('selected');
+        const check = document.createElement('span');
+        check.className = 'swatch-check';
+        check.textContent = '✓';
+        label.appendChild(check);
+      });
+    });
   },
 };

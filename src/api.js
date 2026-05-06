@@ -35,10 +35,11 @@ const MOCK_EMPLOYEES = [
   { id: 10, name: 'Павел Козлов', position: 'Охранник', status: 'active', color: '#f97316' },
 ];
 
-// Генерируем смены динамически от текущего понедельника
 // ── localStorage helpers ─────────────────────────────────────
 const LS_KEY_SHIFTS = 'kursachella_shifts';
 const LS_KEY_COUNTER = 'kursachella_shift_id';
+const LS_KEY_EMPLOYEES = 'kursachella_employees';
+const LS_KEY_EMP_CTR = 'kursachella_employee_id';
 
 function saveShifts(shifts) {
   localStorage.setItem(LS_KEY_SHIFTS, JSON.stringify(shifts));
@@ -52,12 +53,31 @@ function loadShifts() {
   return null;
 }
 
+function saveEmployees(employees) {
+  localStorage.setItem(LS_KEY_EMPLOYEES, JSON.stringify(employees));
+}
+
+function loadEmployees() {
+  try {
+    const raw = localStorage.getItem(LS_KEY_EMPLOYEES);
+    if (raw) return JSON.parse(raw);
+  } catch { /* ignore */ }
+  return null;
+}
+
 let shiftIdCounter = parseInt(localStorage.getItem(LS_KEY_COUNTER) || '100', 10);
+let empIdCounter = parseInt(localStorage.getItem(LS_KEY_EMP_CTR) || '10', 10);
 
 function nextId() {
   shiftIdCounter++;
   localStorage.setItem(LS_KEY_COUNTER, String(shiftIdCounter));
   return shiftIdCounter;
+}
+
+function nextEmpId() {
+  empIdCounter++;
+  localStorage.setItem(LS_KEY_EMP_CTR, String(empIdCounter));
+  return empIdCounter;
 }
 
 function makeShift(offset, startH, endH, type, title, empIds) {
@@ -98,12 +118,41 @@ let MOCK_SHIFTS = loadShifts() || (() => {
   return defaults;
 })();
 
+let MOCK_EMPLOYEES_DATA = loadEmployees() || (() => {
+  saveEmployees(MOCK_EMPLOYEES);
+  return MOCK_EMPLOYEES;
+})();
+
 // ── API функции ──────────────────────────────────────────────
 
 export const api = {
   async fetchEmployees() {
     await delay();
-    return structuredClone(MOCK_EMPLOYEES);
+    return structuredClone(MOCK_EMPLOYEES_DATA);
+  },
+
+  async createEmployee(data) {
+    await delay(200);
+    const emp = { ...data, id: nextEmpId() };
+    MOCK_EMPLOYEES_DATA.push(emp);
+    saveEmployees(MOCK_EMPLOYEES_DATA);
+    return structuredClone(emp);
+  },
+
+  async updateEmployee(id, data) {
+    await delay(200);
+    const idx = MOCK_EMPLOYEES_DATA.findIndex(e => e.id === id);
+    if (idx === -1) throw new Error('Сотрудник не найден');
+    MOCK_EMPLOYEES_DATA[idx] = { ...MOCK_EMPLOYEES_DATA[idx], ...data };
+    saveEmployees(MOCK_EMPLOYEES_DATA);
+    return structuredClone(MOCK_EMPLOYEES_DATA[idx]);
+  },
+
+  async deleteEmployee(id) {
+    await delay(150);
+    MOCK_EMPLOYEES_DATA = MOCK_EMPLOYEES_DATA.filter(e => e.id !== id);
+    saveEmployees(MOCK_EMPLOYEES_DATA);
+    return { success: true };
   },
 
   async fetchShifts() {

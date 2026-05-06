@@ -38,7 +38,7 @@ function renderCalendar() {
 
 function renderStaff() {
   const container = document.getElementById('staff-list');
-  staffView.render(container, store.employees, store.filters.employeeId);
+  staffView.render(container, store.employees, store.filters.employeeId, handleOpenEditEmployee);
   staffView.populateFilterSelect(
     document.getElementById('filter-employee'),
     store.employees
@@ -57,7 +57,7 @@ export function initController() {
   store.addEventListener('filters:changed', () => { renderCalendar(); renderStaff(); });
   store.addEventListener('date:changed', renderCalendar);
   store.addEventListener('view:changed', renderCalendar);
-  store.addEventListener('employees:updated', renderStaff);
+  store.addEventListener('employees:updated', () => { renderStaff(); renderCalendar(); });
 
   // ── Навигация по периодам ──────────────────────────────────
   document.getElementById('btn-prev').addEventListener('click', () => store.navigate(-1));
@@ -76,6 +76,11 @@ export function initController() {
   // ── Кнопка "Добавить смену" ────────────────────────────────
   document.getElementById('btn-add-shift').addEventListener('click', () => {
     modalView.showCreate(null, store.employees, handleSaveCreate);
+  });
+
+  // ── Кнопка "Добавить сотрудника" ──────────────────────────
+  document.getElementById('btn-add-employee').addEventListener('click', () => {
+    modalView.showCreateEmployee(handleSaveCreateEmployee);
   });
 
   // ── Сворачивание сайдбара ──────────────────────────────────
@@ -98,11 +103,20 @@ export function initController() {
 
   // ── Фильтр по клику на сотрудника в сайдбаре ──────────────
   document.getElementById('staff-list').addEventListener('click', e => {
+    // Клик на кнопку редактирования
+    const editBtn = e.target.closest('.staff-edit-btn');
+    if (editBtn) {
+      e.stopPropagation();
+      const empId = Number(editBtn.dataset.editId);
+      const emp = store.getEmployeeById(empId);
+      if (emp) modalView.showEditEmployee(emp, handleSaveEditEmployee, handleDeleteEmployee);
+      return;
+    }
+    // Клик на карточке — фильтр
     const card = e.target.closest('.staff-card');
     if (!card) return;
     const empId = Number(card.dataset.employeeId);
     const current = store.filters.employeeId;
-    // Второй клик — сброс
     store.setFilters({ employeeId: current === empId ? null : empId });
     const filterSel = document.getElementById('filter-employee');
     filterSel.value = current === empId ? '' : empId;
@@ -165,6 +179,45 @@ async function handleDelete(shiftId) {
     await api.deleteShift(shiftId);
     store.deleteShift(shiftId);
     toast('Смена удалена', 'info');
+  } catch (err) {
+    toast('Ошибка при удалении', 'error');
+    console.error(err);
+  }
+}
+
+// ── CRUD сотрудников ────────────────────────────────────
+
+function handleOpenEditEmployee(emp) {
+  modalView.showEditEmployee(emp, handleSaveEditEmployee, handleDeleteEmployee);
+}
+
+async function handleSaveCreateEmployee(data) {
+  try {
+    const emp = await api.createEmployee(data);
+    store.addEmployee(emp);
+    toast('Сотрудник добавлен', 'success');
+  } catch (err) {
+    toast('Ошибка при добавлении', 'error');
+    console.error(err);
+  }
+}
+
+async function handleSaveEditEmployee(data) {
+  try {
+    const updated = await api.updateEmployee(data.id, data);
+    store.updateEmployee(updated);
+    toast('Данные сотрудника обновлены', 'success');
+  } catch (err) {
+    toast('Ошибка при сохранении', 'error');
+    console.error(err);
+  }
+}
+
+async function handleDeleteEmployee(empId) {
+  try {
+    await api.deleteEmployee(empId);
+    store.deleteEmployee(empId);
+    toast('Сотрудник удалён', 'info');
   } catch (err) {
     toast('Ошибка при удалении', 'error');
     console.error(err);

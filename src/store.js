@@ -6,23 +6,23 @@
 
 class Store extends EventTarget {
   #employees = [];
-  #shifts    = [];
+  #shifts = [];
   #currentView = 'week';         // 'week' | 'month'
   #currentDate = new Date();     // опорная дата (начало видимого периода)
   #filters = { employeeId: null, shiftType: null };
 
   // ── Геттеры ────────────────────────────────────────────────
-  get employees()    { return this.#employees; }
-  get shifts()       { return this.#shifts; }
-  get currentView()  { return this.#currentView; }
-  get currentDate()  { return new Date(this.#currentDate); }
-  get filters()      { return { ...this.#filters }; }
+  get employees() { return this.#employees; }
+  get shifts() { return this.#shifts; }
+  get currentView() { return this.#currentView; }
+  get currentDate() { return new Date(this.#currentDate); }
+  get filters() { return { ...this.#filters }; }
 
   /** Смены с учётом активных фильтров */
   get filteredShifts() {
     return this.#shifts.filter(s => {
       if (this.#filters.employeeId && !s.employeeIds.includes(this.#filters.employeeId)) return false;
-      if (this.#filters.shiftType  && s.type !== this.#filters.shiftType) return false;
+      if (this.#filters.shiftType && s.type !== this.#filters.shiftType) return false;
       return true;
     });
   }
@@ -52,6 +52,22 @@ class Store extends EventTarget {
   deleteShift(id) {
     this.#shifts = this.#shifts.filter(s => s.id !== id);
     this.#emit('shifts:updated');
+  }
+
+  addEmployee(emp) {
+    this.#employees.push(emp);
+    this.#emit('employees:updated');
+  }
+
+  updateEmployee(updated) {
+    const idx = this.#employees.findIndex(e => e.id === updated.id);
+    if (idx !== -1) this.#employees[idx] = updated;
+    this.#emit('employees:updated');
+  }
+
+  deleteEmployee(id) {
+    this.#employees = this.#employees.filter(e => e.id !== id);
+    this.#emit('employees:updated');
   }
 
   setView(view) {
