@@ -5,12 +5,12 @@
  */
 
 const HOURS_START = 0;
-const HOURS_END   = 24;
+const HOURS_END = 24;
 const HOUR_HEIGHT = 60; // px на 1 час → итого 1440px
 
-const DAY_NAMES  = ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
-const MONTH_NAMES = ['Январь','Февраль','Март','Апрель','Май','Июнь',
-                     'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь',
+  'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
 
 // ── Утилиты дат ───────────────────────────────────────────────
 export function getMonday(date) {
@@ -22,7 +22,10 @@ export function getMonday(date) {
 }
 
 export function dateStr(date) {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function prevDateStr(ds) {
@@ -34,8 +37,8 @@ function prevDateStr(ds) {
 function isToday(date) {
   const t = new Date();
   return date.getFullYear() === t.getFullYear() &&
-         date.getMonth()    === t.getMonth()    &&
-         date.getDate()     === t.getDate();
+    date.getMonth() === t.getMonth() &&
+    date.getDate() === t.getDate();
 }
 
 // ── Работа со временем ────────────────────────────────────────
@@ -48,7 +51,7 @@ function timePx(timeStr) {
 
 /** Смена пересекает полночь, если конец ≤ начало по минутам */
 function crossesMidnight(shift) {
-  const toMin = t => { const [h,m] = t.split(':').map(Number); return h*60+m; };
+  const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
   return toMin(shift.endTime) <= toMin(shift.startTime);
 }
 
@@ -70,13 +73,13 @@ function avatarHtml(emp) {
  * @param {boolean} isContinuation — true если это продолжение с 00:00
  */
 function shiftCardHtml(shift, employees, displayStart, displayEnd, isContinuation = false) {
-  const top    = timePx(displayStart);
+  const top = timePx(displayStart);
   const bottom = timePx(displayEnd);
   const height = Math.max(bottom - top, 28);
 
-  const emps    = shift.employeeIds.map(id => employees.find(e => e.id === id)).filter(Boolean);
+  const emps = shift.employeeIds.map(id => employees.find(e => e.id === id)).filter(Boolean);
   const avatars = emps.slice(0, 4).map(avatarHtml).join('');
-  const extra   = emps.length > 4 ? `<span style="font-size:9px;color:var(--text-3)">+${emps.length - 4}</span>` : '';
+  const extra = emps.length > 4 ? `<span style="font-size:9px;color:var(--text-3)">+${emps.length - 4}</span>` : '';
 
   // Подпись времени в карточке
   const timeLabel = isContinuation
@@ -107,7 +110,7 @@ export function renderWeek(container, shifts, employees, currentDate) {
 
   // Метки часов: каждые 2 часа (0, 2, 4, ..., 22)
   const timeLabels = Array.from({ length: HOURS_END }, (_, i) =>
-    `<div class="time-label">${String(i).padStart(2,'0')}:00</div>`
+    `<div class="time-label">${String(i).padStart(2, '0')}:00</div>`
   ).join('');
 
   // Заголовки дней
@@ -124,13 +127,13 @@ export function renderWeek(container, shifts, employees, currentDate) {
 
   // Текущее время
   const todayDate = new Date();
-  const todayStr  = dateStr(todayDate);
-  const nowPx     = (todayDate.getHours() + todayDate.getMinutes() / 60) * HOUR_HEIGHT;
+  const todayStr = dateStr(todayDate);
+  const nowPx = (todayDate.getHours() + todayDate.getMinutes() / 60) * HOUR_HEIGHT;
 
   // Колонки дней
   const dayColumns = days.map(d => {
-    const ds       = dateStr(d);
-    const prevDs   = prevDateStr(ds);
+    const ds = dateStr(d);
+    const prevDs = prevDateStr(ds);
     const todayCls = ds === todayStr ? ' today-col' : '';
 
     // Смены, начинающиеся в этот день
@@ -187,17 +190,17 @@ export function renderWeek(container, shifts, employees, currentDate) {
 
 // ── Месячный вид ──────────────────────────────────────────────
 export function renderMonth(container, shifts, employees, currentDate) {
-  const year     = currentDate.getFullYear();
-  const month    = currentDate.getMonth();
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
   const firstDay = new Date(year, month, 1);
 
   const startOffset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
-  const startDate   = new Date(firstDay);
+  const startDate = new Date(firstDay);
   startDate.setDate(1 - startOffset);
 
   const todayStr = dateStr(new Date());
 
-  const headerDays = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс']
+  const headerDays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
     .map(n => `<div class="month-header-day">${n}</div>`).join('');
 
   let cells = '';
@@ -208,17 +211,17 @@ export function renderMonth(container, shifts, employees, currentDate) {
       const ds = dateStr(cellDate);
 
       const isCurrentMonth = cellDate.getMonth() === month;
-      const isTodayCell    = ds === todayStr;
+      const isTodayCell = ds === todayStr;
 
       // Смены начинающиеся в этот день + продолжения
       const dayShifts = shifts.filter(s => s.date === ds);
-      const prevDs    = prevDateStr(ds);
+      const prevDs = prevDateStr(ds);
       const contShifts = shifts.filter(s => s.date === prevDs && crossesMidnight(s));
       const allShifts = [...dayShifts, ...contShifts];
 
       const chips = allShifts.slice(0, 3).map(s => {
         const isCont = contShifts.includes(s);
-        const label  = isCont ? `↑ ${s.title}` : `${s.startTime} ${s.title}`;
+        const label = isCont ? `↑ ${s.title}` : `${s.startTime} ${s.title}`;
         return `<div class="month-shift-chip type-${s.type}" data-shift-id="${s.id}" title="${s.title}">${label}</div>`;
       }).join('');
 

@@ -3,10 +3,10 @@
  * Связывает Store ↔ View ↔ API. Слушает пользовательские действия.
  */
 
-import { store }       from './store.js';
-import { api }         from './api.js';
-import { modalView }   from './view/modalView.js';
-import { staffView }   from './view/staffView.js';
+import { store } from './store.js';
+import { api } from './api.js';
+import { modalView } from './view/modalView.js';
+import { staffView } from './view/staffView.js';
 import { renderWeek, renderMonth, getPeriodLabel } from './view/calendarView.js';
 
 // ── Toast-уведомления ─────────────────────────────────────────
@@ -53,10 +53,10 @@ export function initController() {
   modalView.init();
 
   // Подписка на события стора
-  store.addEventListener('shifts:updated',   renderCalendar);
-  store.addEventListener('filters:changed',  () => { renderCalendar(); renderStaff(); });
-  store.addEventListener('date:changed',     renderCalendar);
-  store.addEventListener('view:changed',     renderCalendar);
+  store.addEventListener('shifts:updated', renderCalendar);
+  store.addEventListener('filters:changed', () => { renderCalendar(); renderStaff(); });
+  store.addEventListener('date:changed', renderCalendar);
+  store.addEventListener('view:changed', renderCalendar);
   store.addEventListener('employees:updated', renderStaff);
 
   // ── Навигация по периодам ──────────────────────────────────
@@ -130,6 +130,10 @@ export function initController() {
       modalView.showCreate(monthCell.dataset.date, store.employees, handleSaveCreate);
     }
   });
+
+  // ── Первичный рендер (store уже заполнен до вызова initController) ──
+  renderCalendar();
+  renderStaff();
 }
 
 // ── Обработчики CRUD ──────────────────────────────────────────
