@@ -616,10 +616,10 @@ a {
   border-radius: var(--radius-sm);
   padding: 6px 8px;
   cursor: pointer;
-  transition: all var(--transition);
+  /* z-index НЕ включён в transition — он меняется мгновенно */
+  transition: filter var(--transition), transform var(--transition);
   overflow: hidden;
   border-left: 3px solid;
-  z-index: 2;
 }
 
 .shift-card:hover {
@@ -1350,8 +1350,13 @@ a {
   }
 
   /* Скрываем кнопку свертывания в сайдбаре и разрешаем мобильную кнопку */
-  #btn-toggle-sidebar { display: none; }
-  #btn-menu { display: flex; }
+  #btn-toggle-sidebar {
+    display: none;
+  }
+
+  #btn-menu {
+    display: flex;
+  }
 
   #main-content {
     grid-column: 1;
@@ -1383,7 +1388,9 @@ a {
     max-width: 160px;
   }
 
-  .btn-text { display: none; }
+  .btn-text {
+    display: none;
+  }
 
   .btn-today-text {
     font-size: 12px;

@@ -143,12 +143,23 @@ export function renderWeek(container, shifts, employees, currentDate) {
     const continuations = shifts.filter(s => s.date === prevDs && crossesMidnight(s));
 
     let cards = '';
+
+    // Сортируем смены: более длинные рендерятся первыми (ниже z-index),
+    // более короткие/вложенные — последними (выше z-index) — чтобы
+    // перехватывать события мыши раньше длинных
+    const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const shiftDuration = s => {
+      const start = toMin(s.startTime);
+      const end   = toMin(s.endTime);
+      return (end > start ? end - start : end - start + 1440);
+    };
+
+    const sortedDayShifts = [...dayShifts].sort((a, b) => shiftDuration(b) - shiftDuration(a));
     let cardIndex = 10;
 
     // Рисуем смены этого дня
-    for (const s of dayShifts) {
+    for (const s of sortedDayShifts) {
       if (crossesMidnight(s)) {
-        // Первая часть: от начала до 24:00
         cards += shiftCardHtml(s, employees, s.startTime, '24:00', false, cardIndex);
       } else {
         cards += shiftCardHtml(s, employees, s.startTime, s.endTime, false, cardIndex);
