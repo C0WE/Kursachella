@@ -7,6 +7,33 @@ function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+// ── Кастомное окошко ошибок ──────────────────────────────────
+function showError(message, title = 'Ошибка') {
+  const overlay = document.getElementById('error-overlay');
+  const msgEl = document.getElementById('error-message');
+  const titleEl = document.getElementById('error-title');
+  const okBtn = document.getElementById('error-ok-btn');
+  if (!overlay) { alert(message); return; }
+  titleEl.textContent = title;
+  msgEl.innerHTML = message;
+  overlay.classList.remove('hidden');
+  const close = () => {
+    overlay.classList.add('hidden');
+    okBtn.removeEventListener('click', close);
+    overlay.removeEventListener('click', backdropClose);
+  };
+  const backdropClose = (e) => { if (e.target === overlay) close(); };
+  okBtn.addEventListener('click', close);
+  overlay.addEventListener('click', backdropClose);
+  setTimeout(() => okBtn.focus(), 50);
+}
+
+// ── Метки статусов сотрудников ───────────────────────────────
+const STATUS_BADGE = {
+  vacation: '<span class="emp-status-badge vacation">отпуск</span>',
+  sick:     '<span class="emp-status-badge sick">больничный</span>',
+};
+
 const TYPE_OPTIONS = [
   { value: 'day', icon: '🌤', label: 'Дневная' },
   { value: 'evening', icon: '🌆', label: 'Вечерняя' },
@@ -36,16 +63,22 @@ function typeSelector(selected = 'day') {
 }
 
 function employeeMultiselect(employees, selectedIds = []) {
-  return employees.map(emp => `
-    <label class="employee-option">
+  return employees.map(emp => {
+    const isUnavailable = emp.status === 'vacation' || emp.status === 'sick';
+    const badge = STATUS_BADGE[emp.status] || '';
+    const disabledAttr = isUnavailable ? 'data-unavailable="true"' : '';
+    return `
+    <label class="employee-option${isUnavailable ? ' unavailable' : ''}">
       <input type="checkbox" name="employees" value="${emp.id}"
-             ${selectedIds.includes(emp.id) ? 'checked' : ''}>
-      <div class="staff-avatar" style="background:${emp.color};width:28px;height:28px;font-size:11px;flex-shrink:0">${initials(emp.name)}</div>
+             ${selectedIds.includes(emp.id) ? 'checked' : ''}
+             ${disabledAttr}>
+      <div class="staff-avatar" style="background:${emp.color};width:28px;height:28px;font-size:11px;flex-shrink:0${isUnavailable ? ';opacity:0.5' : ''}">${initials(emp.name)}</div>
       <div style="flex:1;min-width:0">
-        <div class="employee-option-name">${emp.name}</div>
+        <div class="employee-option-name">${emp.name} ${badge}</div>
         <div class="employee-option-pos">${emp.position}</div>
       </div>
-    </label>`).join('');
+    </label>`;
+  }).join('');
 }
 
 export const modalView = {
@@ -173,10 +206,10 @@ export const modalView = {
       if (data) { onSave({ ...data, id: shift.id }); this.close(); }
     });
     document.getElementById('modal-delete-btn').addEventListener('click', () => {
-      if (confirm(`Удалить смену "${shift.title}"?`)) {
+      this._showConfirm(`Удалить смену «${shift.title}»?`, () => {
         onDelete(shift.id);
         this.close();
-      }
+      });
     });
     this._open();
   },
@@ -202,13 +235,30 @@ export const modalView = {
     const endTime = document.getElementById('shift-end').value;
     const notes = document.getElementById('shift-notes').value.trim();
     const type = document.querySelector('input[name="shift-type"]:checked')?.value || 'day';
-    const employeeIds = [...document.querySelectorAll('input[name="employees"]:checked')]
-      .map(el => Number(el.value));
+    const checkedInputs = [...document.querySelectorAll('input[name="employees"]:checked')];
+    const employeeIds = checkedInputs.map(el => Number(el.value));
 
-    if (!title) { alert('Введите название смены'); return null; }
-    if (!date) { alert('Выберите дату'); return null; }
-    if (!startTime || !endTime) { alert('Укажите время смены'); return null; }
-    if (employeeIds.length === 0) { alert('Назначьте хотя бы одного сотрудника'); return null; }
+    if (!title) { showError('Введите название смены'); return null; }
+    if (!date) { showError('Выберите дату'); return null; }
+    if (!startTime || !endTime) { showError('Укажите время смены'); return null; }
+    if (employeeIds.length === 0) { showError('Назначьте хотя бы одного сотрудника'); return null; }
+
+    // Проверка статуса: нельзя назначить сотрудника в отпуске или на больничном
+    const unavailable = checkedInputs.filter(el => el.dataset.unavailable === 'true');
+    if (unavailable.length > 0) {
+      const names = unavailable.map(el => {
+        const label = el.closest('label');
+        const nameEl = label?.querySelector('.employee-option-name');
+        return nameEl ? nameEl.textContent.trim() : 'Неизвестный';
+      });
+      showError(
+        `Следующие сотрудники недоступны (отпуск или больничный):<br><br>` +
+        names.map(n => `<strong>${n}</strong>`).join('<br>') +
+        `<br><br>Снимите их галочки, чтобы продолжить.`,
+        'Недоступные сотрудники'
+      );
+      return null;
+    }
 
     return { title, date, startTime, endTime, type, employeeIds, notes };
   },
@@ -258,8 +308,8 @@ export const modalView = {
     const color = document.querySelector('input[name="emp-color"]:checked')?.value || PALETTE[0];
     const status = document.querySelector('input[name="emp-status"]:checked')?.value || 'active';
 
-    if (!name) { alert('Введите имя сотрудника'); return null; }
-    if (!position) { alert('Укажите должность'); return null; }
+    if (!name) { showError('Введите имя сотрудника'); return null; }
+    if (!position) { showError('Укажите должность'); return null; }
     return { name, position, color, status };
   },
 
@@ -304,10 +354,10 @@ export const modalView = {
       if (data) { onSave({ ...data, id: emp.id }); this.close(); }
     });
     document.getElementById('modal-delete-btn').addEventListener('click', () => {
-      if (confirm(`Удалить сотрудника "${emp.name}"? Смены с этим сотрудником останутся.`)) {
+      this._showConfirm(`Удалить сотрудника «${emp.name}»? Смены с этим сотрудником останутся.`, () => {
         onDelete(emp.id);
         this.close();
-      }
+      });
     });
     this._open('#emp-name');
   },
@@ -326,5 +376,41 @@ export const modalView = {
         label.appendChild(check);
       });
     });
+  },
+
+  _showConfirm(message, onConfirm) {
+    const overlay = document.getElementById('error-overlay');
+    const msgEl = document.getElementById('error-message');
+    const titleEl = document.getElementById('error-title');
+    const okBtn = document.getElementById('error-ok-btn');
+    if (!overlay) { if (confirm(message)) onConfirm(); return; }
+    titleEl.textContent = 'Подтверждение';
+    msgEl.textContent = message;
+    // swap button to confirm/cancel
+    const footer = okBtn.parentElement;
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-ghost';
+    cancelBtn.textContent = 'Отмена';
+    okBtn.textContent = 'Удалить';
+    okBtn.classList.add('btn-danger-confirm');
+    footer.insertBefore(cancelBtn, okBtn);
+    overlay.classList.remove('hidden');
+    const close = (confirmed) => {
+      overlay.classList.add('hidden');
+      okBtn.removeEventListener('click', confirmCb);
+      cancelBtn.removeEventListener('click', cancelCb);
+      overlay.removeEventListener('click', backdropClose);
+      okBtn.textContent = 'Понятно';
+      okBtn.classList.remove('btn-danger-confirm');
+      cancelBtn.remove();
+      if (confirmed) onConfirm();
+    };
+    const confirmCb = () => close(true);
+    const cancelCb = () => close(false);
+    const backdropClose = (e) => { if (e.target === overlay) close(false); };
+    okBtn.addEventListener('click', confirmCb);
+    cancelBtn.addEventListener('click', cancelCb);
+    overlay.addEventListener('click', backdropClose);
+    setTimeout(() => cancelBtn.focus(), 50);
   },
 };

@@ -72,7 +72,7 @@ function avatarHtml(emp) {
  * @param {string} displayEnd    — время конца блока ("HH:MM" или "24:00")
  * @param {boolean} isContinuation — true если это продолжение с 00:00
  */
-function shiftCardHtml(shift, employees, displayStart, displayEnd, isContinuation = false) {
+function shiftCardHtml(shift, employees, displayStart, displayEnd, isContinuation = false, zIndex = 2) {
   const top = timePx(displayStart);
   const bottom = timePx(displayEnd);
   const height = Math.max(bottom - top, 28);
@@ -91,7 +91,7 @@ function shiftCardHtml(shift, employees, displayStart, displayEnd, isContinuatio
   return `
     <div class="shift-card type-${shift.type}${isContinuation ? ' is-continuation' : ''}"
          data-shift-id="${shift.id}"
-         style="top:${top}px; height:${height}px;"
+         style="top:${top}px; height:${height}px; z-index:${zIndex};"
          title="${shift.title}&#10;${shift.startTime} – ${shift.endTime}">
       <div class="shift-card-time">${timeLabel}</div>
       ${height > 42 ? `<div class="shift-card-title">${shift.title}</div>` : ''}
@@ -143,20 +143,23 @@ export function renderWeek(container, shifts, employees, currentDate) {
     const continuations = shifts.filter(s => s.date === prevDs && crossesMidnight(s));
 
     let cards = '';
+    let cardIndex = 10;
 
     // Рисуем смены этого дня
     for (const s of dayShifts) {
       if (crossesMidnight(s)) {
         // Первая часть: от начала до 24:00
-        cards += shiftCardHtml(s, employees, s.startTime, '24:00', false);
+        cards += shiftCardHtml(s, employees, s.startTime, '24:00', false, cardIndex);
       } else {
-        cards += shiftCardHtml(s, employees, s.startTime, s.endTime, false);
+        cards += shiftCardHtml(s, employees, s.startTime, s.endTime, false, cardIndex);
       }
+      cardIndex++;
     }
 
     // Рисуем продолжения с 00:00
     for (const s of continuations) {
-      cards += shiftCardHtml(s, employees, '00:00', s.endTime, true);
+      cards += shiftCardHtml(s, employees, '00:00', s.endTime, true, cardIndex);
+      cardIndex++;
     }
 
     const timeLine = ds === todayStr

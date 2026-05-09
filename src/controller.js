@@ -83,10 +83,34 @@ export function initController() {
     modalView.showCreateEmployee(handleSaveCreateEmployee);
   });
 
-  // ── Сворачивание сайдбара ──────────────────────────────────
+  // ── Сворачивание сайдбара (десктоп) ───────────────────────
   document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
     document.getElementById('app').classList.toggle('sidebar-collapsed');
   });
+
+  // ── Мобильное меню (боковая панель) ───────────────────────
+  const sidebar = document.getElementById('sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  const btnMenu = document.getElementById('btn-menu');
+
+  function openMobileSidebar() {
+    sidebar.classList.add('mobile-open');
+    backdrop.classList.add('active');
+  }
+  function closeMobileSidebar() {
+    sidebar.classList.remove('mobile-open');
+    backdrop.classList.remove('active');
+  }
+
+  btnMenu?.addEventListener('click', () => {
+    if (sidebar.classList.contains('mobile-open')) {
+      closeMobileSidebar();
+    } else {
+      openMobileSidebar();
+    }
+  });
+
+  backdrop?.addEventListener('click', closeMobileSidebar);
 
   // ── Фильтры ───────────────────────────────────────────────
   document.getElementById('filter-employee').addEventListener('change', e => {
