@@ -148,24 +148,60 @@ export function initController() {
 
   // ── Делегирование кликов по календарю ─────────────────────
   document.getElementById('calendar-section').addEventListener('click', e => {
-    // Клик на карточке смены в НЕДЕЛЬНОМ виде.
-    // Используем elementsFromPoint вместо e.target.closest() чтобы корректно
-    // обрабатывать перекрывающиеся смены: берём карточку с наибольшим z-index
-    // (более короткая смена = выше приоритет), игнорируя CSS-стек от hover.
-    const allAtPoint = document.elementsFromPoint(e.clientX, e.clientY);
-    const shiftCards = allAtPoint.filter(el => el.matches && el.matches('.shift-card'));
-    if (shiftCards.length > 0) {
-      const topCard = shiftCards.reduce((best, card) => {
-        const bz = parseInt(best.style.zIndex) || 0;
-        const cz = parseInt(card.style.zIndex) || 0;
-        return cz > bz ? card : best;
+    // ── Недельный вид: геометрическое определение смены ──────
+    // Не доверяем DOM/z-index стеку. Вместо этого: вычисляем время клика по
+    // Y-координате и ищем все смены за этот день, перекрывающие этот момент.
+    // Среди них выбираем с наименьшей длительностью (самую "вложенную").
+    const dayCol = e.target.closest('.day-column');
+    if (dayCol) {
+      const date = dayCol.dataset.date;
+      const HOUR_HEIGHT = 60; // px на час — должно совпадать с calendarView.js
+      const weekBody = dayCol.closest('.week-body');
+      const colRect = dayCol.getBoundingClientRect();
+      // Учитываем прокрутку week-body
+      const scrollTop = weekBody ? weekBody.scrollTop : 0;
+      const relY = e.clientY - colRect.top + scrollTop;
+      const clickedMinutes = Math.round((relY / HOUR_HEIGHT) * 60);
+
+      const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+
+      // Все видимые смены этого дня (учитываем filteredShifts)
+      const candidates = store.filteredShifts.filter(s => {
+        if (s.date !== date) return false;
+        const start = toMin(s.startTime);
+        const end   = toMin(s.endTime);
+        // Обычная смена: start..end; ночная: start..1440 (до конца дня)
+        const effectiveEnd = end <= start ? 1440 : end;
+        return clickedMinutes >= start && clickedMinutes < effectiveEnd;
       });
-      const shiftId = Number(topCard.dataset.shiftId);
-      const shift = store.getShiftById(shiftId);
-      if (shift) { modalView.showEdit(shift, store.employees, handleSaveEdit, handleDelete); return; }
+
+      if (candidates.length > 0) {
+        // Берём смену с наименьшей длительностью — она "вложена" в более длинную
+        candidates.sort((a, b) => {
+          const durA = toMin(a.endTime) - toMin(a.startTime);
+          const durB = toMin(b.endTime) - toMin(b.startTime);
+          return durA - durB;
+        });
+        const shift = store.getShiftById(candidates[0].id);
+        if (shift) {
+          // Убеждаемся, что клик не пришёл от drop-zone (пустая зона)
+          if (!e.target.closest('.drop-zone') || candidates.length > 0) {
+            modalView.showEdit(shift, store.employees, handleSaveEdit, handleDelete);
+            return;
+          }
+        }
+      }
+
+      // Клик на пустой зоне дня — создать смену
+      const dropZone = e.target.closest('.drop-zone');
+      if (dropZone) {
+        modalView.showCreate(dropZone.dataset.date, store.employees, handleSaveCreate);
+        return;
+      }
+      return;
     }
 
-    // Клик на chip в месячном виде
+    // ── Месячный вид ─────────────────────────────────────────
     const monthChip = e.target.closest('.month-shift-chip');
     if (monthChip) {
       const shiftId = Number(monthChip.dataset.shiftId);
@@ -173,12 +209,6 @@ export function initController() {
       if (shift) { modalView.showEdit(shift, store.employees, handleSaveEdit, handleDelete); return; }
     }
 
-    // Клик на пустую зону дня (неделя) или ячейку месяца
-    const dropZone = e.target.closest('.drop-zone');
-    if (dropZone) {
-      modalView.showCreate(dropZone.dataset.date, store.employees, handleSaveCreate);
-      return;
-    }
     const monthCell = e.target.closest('.month-cell');
     if (monthCell && !e.target.closest('.month-shift-chip')) {
       modalView.showCreate(monthCell.dataset.date, store.employees, handleSaveCreate);

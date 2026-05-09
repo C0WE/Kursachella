@@ -625,7 +625,7 @@ a {
 .shift-card:hover {
   filter: brightness(1.15);
   transform: scale(1.01);
-  z-index: 999 !important;
+  /* z-index при hover НЕ меняем — иначе длинная смена перекроет короткую */
 }
 
 .shift-card.type-day {
