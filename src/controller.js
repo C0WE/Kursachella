@@ -148,13 +148,29 @@ export function initController() {
 
   // ── Делегирование кликов по календарю ─────────────────────
   document.getElementById('calendar-section').addEventListener('click', e => {
-    // Клик на карточке смены
-    const shiftCard = e.target.closest('.shift-card, .month-shift-chip');
-    if (shiftCard) {
-      const shiftId = Number(shiftCard.dataset.shiftId);
+    // Клик на карточке смены в НЕДЕЛЬНОМ виде.
+    // Используем elementsFromPoint вместо e.target.closest() чтобы корректно
+    // обрабатывать перекрывающиеся смены: берём карточку с наибольшим z-index
+    // (более короткая смена = выше приоритет), игнорируя CSS-стек от hover.
+    const allAtPoint = document.elementsFromPoint(e.clientX, e.clientY);
+    const shiftCards = allAtPoint.filter(el => el.matches && el.matches('.shift-card'));
+    if (shiftCards.length > 0) {
+      const topCard = shiftCards.reduce((best, card) => {
+        const bz = parseInt(best.style.zIndex) || 0;
+        const cz = parseInt(card.style.zIndex) || 0;
+        return cz > bz ? card : best;
+      });
+      const shiftId = Number(topCard.dataset.shiftId);
       const shift = store.getShiftById(shiftId);
-      if (shift) modalView.showEdit(shift, store.employees, handleSaveEdit, handleDelete);
-      return;
+      if (shift) { modalView.showEdit(shift, store.employees, handleSaveEdit, handleDelete); return; }
+    }
+
+    // Клик на chip в месячном виде
+    const monthChip = e.target.closest('.month-shift-chip');
+    if (monthChip) {
+      const shiftId = Number(monthChip.dataset.shiftId);
+      const shift = store.getShiftById(shiftId);
+      if (shift) { modalView.showEdit(shift, store.employees, handleSaveEdit, handleDelete); return; }
     }
 
     // Клик на пустую зону дня (неделя) или ячейку месяца
