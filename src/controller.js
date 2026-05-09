@@ -64,6 +64,20 @@ export function initController() {
   document.getElementById('btn-next').addEventListener('click', () => store.navigate(1));
   document.getElementById('btn-today').addEventListener('click', () => store.goToToday());
 
+  // ── Клик на логотип SMENA → статистика за месяц ───────────
+  const MONTH_NAMES_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+    'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+  document.querySelector('.logo')?.addEventListener('click', () => {
+    const d = store.currentDate;
+    const year = d.getFullYear();
+    const month = d.getMonth();
+    const prefix = `${year}-${String(month + 1).padStart(2, '0')}`;
+    const monthLabel = `${MONTH_NAMES_RU[month]} ${year}`;
+    const shiftsInMonth = store.shifts.filter(s => s.date.startsWith(prefix));
+    modalView.showStats(monthLabel, shiftsInMonth, store.employees);
+  });
+
   // ── Переключение вида ──────────────────────────────────────
   document.querySelectorAll('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {

@@ -413,4 +413,123 @@ export const modalView = {
     overlay.addEventListener('click', backdropClose);
     setTimeout(() => cancelBtn.focus(), 50);
   },
+
+  showStats(monthLabel, shiftsInMonth, employees) {
+    // ── Вспомогательные функции ────────────────────────────
+    const toMin = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+    const overlapMin = (a, b, c, d) => Math.max(0, Math.min(b, d) - Math.max(a, c));
+    const fmt = h => h === 0 ? '—' : (Number.isInteger(h * 10) ? `${h}ч` : `${h.toFixed(1)}ч`);
+
+    // Дневной период: 07:00–22:00
+    const DAY_S = 7 * 60, DAY_E = 22 * 60;
+
+    function calcHours(startTime, endTime) {
+      const s = toMin(startTime), e = toMin(endTime);
+      let dayM = 0, nightM = 0;
+      const addSegment = (from, to) => {
+        dayM   += overlapMin(from, to, DAY_S, DAY_E);
+        nightM += overlapMin(from, to, 0, DAY_S) + overlapMin(from, to, DAY_E, 1440);
+      };
+      if (e > s) { addSegment(s, e); }
+      else        { addSegment(s, 1440); addSegment(0, e); } // ночная через полночь
+      return { dayM, nightM };
+    }
+
+    // ── Агрегируем по сотрудникам ──────────────────────────
+    const empStats = {};
+    for (const shift of shiftsInMonth) {
+      const { dayM, nightM } = calcHours(shift.startTime, shift.endTime);
+      for (const id of shift.employeeIds) {
+        if (!empStats[id]) empStats[id] = { dayM: 0, nightM: 0 };
+        empStats[id].dayM   += dayM;
+        empStats[id].nightM += nightM;
+      }
+    }
+
+    const worked = employees.filter(e => empStats[e.id]);
+    const totalDayH   = Object.values(empStats).reduce((s, v) => s + v.dayM,   0) / 60;
+    const totalNightH = Object.values(empStats).reduce((s, v) => s + v.nightM, 0) / 60;
+
+    const avatarHtml = emp => `
+      <div class="staff-avatar" style="background:${emp.color};width:22px;height:22px;font-size:8px;flex-shrink:0">
+        ${emp.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+      </div>`;
+
+    const rows = worked.length === 0
+      ? `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-3)">Нет смен за этот период</td></tr>`
+      : worked.map(emp => {
+          const st  = empStats[emp.id];
+          const dh  = st.dayM / 60, nh = st.nightM / 60;
+          return `<tr>
+            <td><div style="display:flex;align-items:center;gap:8px">${avatarHtml(emp)}<span>${emp.name}</span></div></td>
+            <td class="stat-day">${fmt(dh)}</td>
+            <td class="stat-night">${fmt(nh)}</td>
+            <td class="stat-total">${fmt(dh + nh)}</td>
+          </tr>`;
+        }).join('');
+
+    const tfoot = worked.length > 0 ? `
+      <tfoot><tr>
+        <td><strong>Итого</strong></td>
+        <td class="stat-day"><strong>${fmt(totalDayH)}</strong></td>
+        <td class="stat-night"><strong>${fmt(totalNightH)}</strong></td>
+        <td class="stat-total"><strong>${fmt(totalDayH + totalNightH)}</strong></td>
+      </tr></tfoot>` : '';
+
+    this.box.className = 'modal-box stats-modal';
+    this.box.innerHTML = `
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Статистика</h2>
+          <div style="font-size:12px;color:var(--text-3);margin-top:2px">${monthLabel}</div>
+        </div>
+        <button class="modal-close" id="modal-close-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="stats-cards">
+          <div class="stats-card">
+            <div class="stats-card-value">${worked.length}</div>
+            <div class="stats-card-label">Сотрудников работало</div>
+          </div>
+          <div class="stats-card day">
+            <div class="stats-card-value">${fmt(totalDayH)}</div>
+            <div class="stats-card-label">☀ Дневных часов</div>
+          </div>
+          <div class="stats-card night">
+            <div class="stats-card-value">${fmt(totalNightH)}</div>
+            <div class="stats-card-label">🌙 Ночных часов</div>
+          </div>
+        </div>
+        <div class="stats-table-wrap">
+          <table class="stats-table">
+            <thead><tr>
+              <th>Сотрудник</th>
+              <th>☀ Дневные</th>
+              <th>🌙 Ночные</th>
+              <th>Итого</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+            ${tfoot}
+          </table>
+        </div>
+        <div class="stats-note">
+          <span>☀ Дневные: 07:00 – 22:00</span>
+          <span>🌙 Ночные: 22:00 – 07:00</span>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary" id="modal-close-btn-stats">Закрыть</button>
+      </div>`;
+
+    document.getElementById('modal-close-btn')?.addEventListener('click', () => {
+      this.box.className = 'modal-box'; this.close();
+    });
+    document.getElementById('modal-close-btn-stats')?.addEventListener('click', () => {
+      this.box.className = 'modal-box'; this.close();
+    });
+    this.overlay.addEventListener('click', e => {
+      if (e.target === this.overlay) { this.box.className = 'modal-box'; this.close(); }
+    }, { once: true });
+    this._open('#modal-close-btn-stats');
+  },
 };
