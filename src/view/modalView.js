@@ -8,13 +8,12 @@ function initials(name) {
 }
 
 // ── Санитизация ввода ────────────────────────────────────────
-/**
- * Удаляет все специальные символы из строки.
+/** Проверяет, есть ли в строке запрещенные символы.
  * Разрешено: буквы (любые, включая кириллицу), цифры,
  * пробел и базовая пунктуация: . , - ! ?
  */
-function sanitize(str) {
-  return str.replace(/[^\p{L}\p{N}\s.,\-!?]/gu, '');
+function hasInvalidChars(str) {
+  return /[^\p{L}\p{N}\s.,\-!?]/u.test(str);
 }
 
 // ── Кастомное окошко ошибок ──────────────────────────────────
@@ -241,16 +240,20 @@ export const modalView = {
   },
 
   _collectFormData() {
-    const title = sanitize(document.getElementById('shift-title').value.trim());
+    const title = document.getElementById('shift-title').value.trim();
     const date = document.getElementById('shift-date').value;
     const startTime = document.getElementById('shift-start').value;
     const endTime = document.getElementById('shift-end').value;
-    const notes = sanitize(document.getElementById('shift-notes').value.trim());
+    const notes = document.getElementById('shift-notes').value.trim();
     const type = document.querySelector('input[name="shift-type"]:checked')?.value || 'day';
     const checkedInputs = [...document.querySelectorAll('input[name="employees"]:checked')];
     const employeeIds = checkedInputs.map(el => Number(el.value));
 
     if (!title) { showError('Введите название смены'); return null; }
+    if (hasInvalidChars(title) || hasInvalidChars(notes)) {
+      showError('Исправьте поля с недопустимыми символами');
+      return null;
+    }
     if (!date) { showError('Выберите дату'); return null; }
     if (!startTime || !endTime) { showError('Укажите время смены'); return null; }
     if (employeeIds.length === 0) { showError('Назначьте хотя бы одного сотрудника'); return null; }
@@ -315,31 +318,54 @@ export const modalView = {
   },
 
   _collectEmployeeData() {
-    const name = sanitize(document.getElementById('emp-name').value.trim());
-    const position = sanitize(document.getElementById('emp-position').value.trim());
+    const name = document.getElementById('emp-name').value.trim();
+    const position = document.getElementById('emp-position').value.trim();
     const color = document.querySelector('input[name="emp-color"]:checked')?.value || PALETTE[0];
     const status = document.querySelector('input[name="emp-status"]:checked')?.value || 'active';
 
     if (!name) { showError('Введите имя сотрудника'); return null; }
     if (!position) { showError('Укажите должность'); return null; }
+    if (hasInvalidChars(name) || hasInvalidChars(position)) {
+      showError('Исправьте поля с недопустимыми символами');
+      return null;
+    }
     return { name, position, color, status };
   },
 
-  /** Живая санитизация текстовых полей формы по мере ввода */
+  /** Валидация текстовых полей: подсвечивает поле и блокирует кнопку если есть спецсимволы */
   _bindInputSanitize(...ids) {
+    const saveBtn = this.box.querySelector('#modal-save-btn');
+
+    const validate = () => {
+      let hasError = false;
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const invalid = hasInvalidChars(el.value);
+        el.classList.toggle('form-input--error', invalid);
+
+        // Управляем подсказкой
+        let hint = el.parentElement.querySelector('.field-error-hint');
+        if (invalid) {
+          if (!hint) {
+            hint = document.createElement('div');
+            hint.className = 'field-error-hint';
+            hint.textContent = 'Нельзя использовать специальные символы';
+            el.after(hint);
+          }
+          hasError = true;
+        } else {
+          hint?.remove();
+        }
+      });
+
+      if (saveBtn) saveBtn.disabled = hasError;
+    };
+
     ids.forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
-      el.addEventListener('input', () => {
-        const pos = el.selectionStart;
-        const cleaned = sanitize(el.value);
-        if (cleaned !== el.value) {
-          el.value = cleaned;
-          // Восстанавливаем позицию курсора
-          const offset = el.value.length - (el.value.length - pos);
-          el.setSelectionRange(Math.min(pos, cleaned.length), Math.min(pos, cleaned.length));
-        }
-      });
+      el.addEventListener('input', validate);
     });
   },
 
