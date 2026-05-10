@@ -7,6 +7,16 @@ function initials(name) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+// ── Санитизация ввода ────────────────────────────────────────
+/**
+ * Удаляет все специальные символы из строки.
+ * Разрешено: буквы (любые, включая кириллицу), цифры,
+ * пробел и базовая пунктуация: . , - ! ?
+ */
+function sanitize(str) {
+  return str.replace(/[^\p{L}\p{N}\s.,\-!?]/gu, '');
+}
+
 // ── Кастомное окошко ошибок ──────────────────────────────────
 function showError(message, title = 'Ошибка') {
   const overlay = document.getElementById('error-overlay');
@@ -31,7 +41,7 @@ function showError(message, title = 'Ошибка') {
 // ── Метки статусов сотрудников ───────────────────────────────
 const STATUS_BADGE = {
   vacation: '<span class="emp-status-badge vacation">отпуск</span>',
-  sick:     '<span class="emp-status-badge sick">больничный</span>',
+  sick: '<span class="emp-status-badge sick">больничный</span>',
 };
 
 const TYPE_OPTIONS = [
@@ -144,6 +154,7 @@ export const modalView = {
       </div>`;
 
     this._bindClose();
+    this._bindInputSanitize('shift-title', 'shift-notes');
     document.getElementById('modal-save-btn').addEventListener('click', () => {
       const data = this._collectFormData();
       if (data) { onSave(data); this.close(); }
@@ -201,6 +212,7 @@ export const modalView = {
       </div>`;
 
     this._bindClose();
+    this._bindInputSanitize('shift-title', 'shift-notes');
     document.getElementById('modal-save-btn').addEventListener('click', () => {
       const data = this._collectFormData();
       if (data) { onSave({ ...data, id: shift.id }); this.close(); }
@@ -229,11 +241,11 @@ export const modalView = {
   },
 
   _collectFormData() {
-    const title = document.getElementById('shift-title').value.trim();
+    const title = sanitize(document.getElementById('shift-title').value.trim());
     const date = document.getElementById('shift-date').value;
     const startTime = document.getElementById('shift-start').value;
     const endTime = document.getElementById('shift-end').value;
-    const notes = document.getElementById('shift-notes').value.trim();
+    const notes = sanitize(document.getElementById('shift-notes').value.trim());
     const type = document.querySelector('input[name="shift-type"]:checked')?.value || 'day';
     const checkedInputs = [...document.querySelectorAll('input[name="employees"]:checked')];
     const employeeIds = checkedInputs.map(el => Number(el.value));
@@ -303,14 +315,32 @@ export const modalView = {
   },
 
   _collectEmployeeData() {
-    const name = document.getElementById('emp-name').value.trim();
-    const position = document.getElementById('emp-position').value.trim();
+    const name = sanitize(document.getElementById('emp-name').value.trim());
+    const position = sanitize(document.getElementById('emp-position').value.trim());
     const color = document.querySelector('input[name="emp-color"]:checked')?.value || PALETTE[0];
     const status = document.querySelector('input[name="emp-status"]:checked')?.value || 'active';
 
     if (!name) { showError('Введите имя сотрудника'); return null; }
     if (!position) { showError('Укажите должность'); return null; }
     return { name, position, color, status };
+  },
+
+  /** Живая санитизация текстовых полей формы по мере ввода */
+  _bindInputSanitize(...ids) {
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', () => {
+        const pos = el.selectionStart;
+        const cleaned = sanitize(el.value);
+        if (cleaned !== el.value) {
+          el.value = cleaned;
+          // Восстанавливаем позицию курсора
+          const offset = el.value.length - (el.value.length - pos);
+          el.setSelectionRange(Math.min(pos, cleaned.length), Math.min(pos, cleaned.length));
+        }
+      });
+    });
   },
 
   showCreateEmployee(onSave) {
@@ -326,6 +356,7 @@ export const modalView = {
       </div>`;
     this._bindClose();
     this._bindColorSwatches();
+    this._bindInputSanitize('emp-name', 'emp-position');
     document.getElementById('modal-save-btn').addEventListener('click', () => {
       const data = this._collectEmployeeData();
       if (data) { onSave(data); this.close(); }
@@ -349,6 +380,7 @@ export const modalView = {
       </div>`;
     this._bindClose();
     this._bindColorSwatches();
+    this._bindInputSanitize('emp-name', 'emp-position');
     document.getElementById('modal-save-btn').addEventListener('click', () => {
       const data = this._collectEmployeeData();
       if (data) { onSave({ ...data, id: emp.id }); this.close(); }
@@ -427,11 +459,11 @@ export const modalView = {
       const s = toMin(startTime), e = toMin(endTime);
       let dayM = 0, nightM = 0;
       const addSegment = (from, to) => {
-        dayM   += overlapMin(from, to, DAY_S, DAY_E);
+        dayM += overlapMin(from, to, DAY_S, DAY_E);
         nightM += overlapMin(from, to, 0, DAY_S) + overlapMin(from, to, DAY_E, 1440);
       };
       if (e > s) { addSegment(s, e); }
-      else        { addSegment(s, 1440); addSegment(0, e); } // ночная через полночь
+      else { addSegment(s, 1440); addSegment(0, e); } // ночная через полночь
       return { dayM, nightM };
     }
 
@@ -441,13 +473,13 @@ export const modalView = {
       const { dayM, nightM } = calcHours(shift.startTime, shift.endTime);
       for (const id of shift.employeeIds) {
         if (!empStats[id]) empStats[id] = { dayM: 0, nightM: 0 };
-        empStats[id].dayM   += dayM;
+        empStats[id].dayM += dayM;
         empStats[id].nightM += nightM;
       }
     }
 
     const worked = employees.filter(e => empStats[e.id]);
-    const totalDayH   = Object.values(empStats).reduce((s, v) => s + v.dayM,   0) / 60;
+    const totalDayH = Object.values(empStats).reduce((s, v) => s + v.dayM, 0) / 60;
     const totalNightH = Object.values(empStats).reduce((s, v) => s + v.nightM, 0) / 60;
 
     const avatarHtml = emp => `
@@ -458,15 +490,15 @@ export const modalView = {
     const rows = worked.length === 0
       ? `<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--text-3)">Нет смен за этот период</td></tr>`
       : worked.map(emp => {
-          const st  = empStats[emp.id];
-          const dh  = st.dayM / 60, nh = st.nightM / 60;
-          return `<tr>
+        const st = empStats[emp.id];
+        const dh = st.dayM / 60, nh = st.nightM / 60;
+        return `<tr>
             <td><div style="display:flex;align-items:center;gap:8px">${avatarHtml(emp)}<span>${emp.name}</span></div></td>
             <td class="stat-day">${fmt(dh)}</td>
             <td class="stat-night">${fmt(nh)}</td>
             <td class="stat-total">${fmt(dh + nh)}</td>
           </tr>`;
-        }).join('');
+      }).join('');
 
     const tfoot = worked.length > 0 ? `
       <tfoot><tr>
